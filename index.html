@@ -4,109 +4,57 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>School Myopia-Onset Risk Calculator</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-    <link rel="stylesheet" href="styles.css">
     <style>
         body {
             font-family: Arial, sans-serif;
-            background-color: #f0f4f8;
-            color: #333;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 20px;
+            margin: 40px;
         }
-
         h1 {
-            color: #0056b3;
-            text-align: center;
+            color: #333;
         }
-
-        form {
-            background-color: #ffffff;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
-            max-width: 400px;
-            width: 100%;
-        }
-
         label {
+            margin-top: 10px;
             display: block;
-            margin-top: 15px;
-            font-weight: bold;
         }
-
-        select, input[type="number"] {
-            width: 100%;
-            padding: 8px;
+        input, select, button {
             margin-top: 5px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-        }
-
-        button[type="submit"] {
-            background-color: #0056b3;
-            color: white;
-            padding: 10px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
+            padding: 8px;
             font-size: 16px;
-            margin-top: 20px;
-            width: 100%;
         }
-
-        button[type="submit"]:hover {
-            background-color: #004494;
-        }
-
         #result {
-            margin-top: 30px;
-            padding: 20px;
-            background-color: #ffffff;
-            border-radius: 10px;
-            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
-            max-width: 400px;
-            width: 100%;
-        }
-
-        .error {
-            color: red;
-        }
-
-        .result-title {
-            color: #0056b3;
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
         }
     </style>
 </head>
 <body>
-    <h1><i class="fas fa-eye"></i> School Myopia-Onset Risk Calculator</h1>
+    <h1>School Myopia-Onset Risk Calculator</h1>
     <form id="predictionForm">
-        <label for="group">Choose model:</label>
+        <label for="group">Choose model:</label><br>
         <select id="group" onchange="updateVariable2Label()">
             <option value="cyc_data_model">Cyc Data Models</option>
             <option value="noncyc_data_model">Non-Cyc Data Models</option>
-        </select>
+        </select><br>
 
         <label for="genddeer">Gender:</label>
         <select id="genddeer">
             <option value="male">Male</option>
             <option value="female">Female</option>
-        </select>
+        </select><br>
 
         <label for="variable2" id="variable2Label">Baseline SER:</label>
-        <input type="number" id="variable2" step="0.01" required>
+        <input type="number" id="variable2" step="0.01" required><br>  <!-- 允许输入小数 -->
 
         <label for="preall">AL change in past 1 year:</label>
-        <input type="number" id="preall" step="0.01" required>
+        <input type="number" id="preall" step="0.01" required><br>  <!-- 允许输入小数 -->
 
         <label for="paresdasda">Number of myopic parents:</label>
         <select id="paresdasda">
             <option value="0">0</option>
             <option value="1">1</option>
             <option value="2">2</option>
-        </select>
+        </select><br>
 
         <button type="submit">Predict Risk</button>
     </form>
@@ -134,24 +82,20 @@
             const preall = parseFloat(document.getElementById('preall').value);
             const paresdasda = parseInt(document.getElementById('paresdasda').value);
 
-            // 构造请求体，确保数据格式正确
-            const requestBody = {
-                model_type: group,
-                model_name: `in_1_year`, // 一次性发送所有年份
-                inputs: {
-                    genddeer: genddeer,
-                    variable2: variable2,
-                    preall: preall,
-                    paresdasda: paresdasda
-                }
-            };
-
-            console.log("Request Body:", requestBody);  // 打印请求体，查看内容是否正确
-
+            // 构造请求体，分别请求3个年份的预测结果
+            const results = {};
             try {
-                const results = {};
                 for (let year = 1; year <= 3; year++) {
-                    requestBody.model_name = `in_${year}_year`; // 修改年份
+                    const model_name = `${group}_for_${year}_year${year > 1 ? 's' : ''}`;
+                    const requestBody = {
+                        model_name: model_name,
+                        inputs: {
+                            genddeer: genddeer,
+                            variable2: variable2,
+                            preall: preall,
+                            paresdasda: paresdasda,
+                        }
+                    };
 
                     console.log("Sending Request for Year:", year);  // 打印当前请求的年份
                     console.log("Request Body for Year:", requestBody);  // 打印具体请求内容
@@ -171,6 +115,7 @@
                     const result = await response.json();
                     results[`in_${year}_year`] = result;
                 }
+
                 displayResults(results);
             } catch (error) {
                 console.error('Error:', error);
@@ -179,11 +124,16 @@
         });
 
         function displayResults(results) {
-            let resultDisplay = "<h2 class='result-title'>Results</h2>";
+            let resultDisplay = "<h2>Results</h2>";
             for (const [modelName, prediction] of Object.entries(results)) {
-                const year = modelName.split('_').slice(-2).join(' ');
-                resultDisplay += `<p>Myopia-onset risk probability in ${year}: ${prediction.probability}</p>`;
-                resultDisplay += `<p>95% Confidence Interval: [${prediction.confidence_interval[0]}, ${prediction.confidence_interval[1]}]</p>`;
+                // 将 modelName 拆分成单词数组
+                const modelNameParts = modelName.split('_');
+                // 获取 modelName 的最后两个单词
+                const modelSuffix = modelNameParts.slice(-2).join(' ');
+
+                // 显示结果，将 modelName 的后两个词附加在 "myopia-onset risk probability" 之后
+                resultDisplay += `<p>Myopia-onset risk probability ${modelSuffix}: ${prediction.probability}</p>`;
+                resultDisplay += `<p>95% CI: [${prediction.confidence_interval ? prediction.confidence_interval[0] : 'N/A'}, ${prediction.confidence_interval ? prediction.confidence_interval[1] : 'N/A'}]</p>`;
             }
             document.getElementById('result').innerHTML = resultDisplay;
         }
