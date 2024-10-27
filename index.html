@@ -118,7 +118,7 @@
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        model_name: `${group}_for_1_year`,
+                        model_group: group,
                         inputs: {
                             genddeer: genddeer,
                             variable2: variable2,
@@ -134,7 +134,9 @@
 
                 const result = await response.json();
                 let resultDisplay = `<h3>Prediction Result:</h3>`;
-                resultDisplay += `<p>Myopia-onset risk probability in 1 year: <strong>${result.probability}</strong></p>`;
+                for (const [year, probability] of Object.entries(result)) {
+                    resultDisplay += `<p>Myopia-onset risk probability ${year.replace('_', ' ')}: <strong>${probability}</strong></p>`;
+                }
 
                 document.getElementById('result').innerHTML = resultDisplay;
                 document.getElementById('result').classList.add('alert-success');
