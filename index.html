@@ -133,10 +133,12 @@
                 }
 
                 const result = await response.json();
-                let resultDisplay = `<h3>Prediction Result:</h3>`;
-                for (const [year, prediction] of Object.entries(result)) {
-                    resultDisplay += `<p>Myopia-onset risk probability ${year.replace('_', ' ')}: <strong>${prediction.probability}</strong></p>`;
-                    resultDisplay += `<p>95% CI: [${prediction.confidence_interval[0]}, ${prediction.confidence_interval[1]}]</p>`;
+                let resultDisplay = `<h3>Prediction Results:</h3>`;
+                for (const [year, data] of Object.entries(result)) {
+                    resultDisplay += `
+                        <p>Myopia-onset risk probability ${year.replace('_', ' ')}: <strong>${data.probability}</strong></p>
+                        <p>95% Confidence Interval: [${data.confidence_interval[0]}, ${data.confidence_interval[1]}]</p>
+                    `;
                 }
 
                 document.getElementById('result').innerHTML = resultDisplay;
