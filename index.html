@@ -4,34 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>School Myopia-Onset Risk Calculator</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 40px;
-        }
-        h1 {
-            color: #333;
-        }
-        label {
-            margin-top: 10px;
-            display: block;
-        }
-        input, select, button {
-            margin-top: 5px;
-            padding: 8px;
-            font-size: 16px;
-        }
-        #result {
-            margin-top: 20px;
-            padding: 10px;
-            border: 1px solid #ccc;
-        }
-    </style>
 </head>
 <body>
     <h1>School Myopia-Onset Risk Calculator</h1>
     <form id="predictionForm">
-        <label for="group">Choose model:</label><br>
+        <label for="group">Choose Model:</label><br>
         <select id="group" onchange="updateVariable2Label()">
             <option value="cyc_data_model">Cyc Data Models</option>
             <option value="noncyc_data_model">Non-Cyc Data Models</option>
@@ -44,12 +21,12 @@
         </select><br>
 
         <label for="variable2" id="variable2Label">Baseline SER:</label>
-        <input type="number" id="variable2" step="0.01" required><br>  <!-- 允许输入小数 -->
+        <input type="number" id="variable2" step="0.01" required><br>
 
         <label for="preall">AL change in past 1 year:</label>
-        <input type="number" id="preall" step="0.01" required><br>  <!-- 允许输入小数 -->
+        <input type="number" id="preall" step="0.01" required><br>
 
-        <label for="paresdasda">Number of myopic parents:</label>
+        <label for="paresdasda">Number of Myopic Parents:</label>
         <select id="paresdasda">
             <option value="0">0</option>
             <option value="1">1</option>
@@ -80,64 +57,40 @@
             const genddeer = document.getElementById('genddeer').value;
             const variable2 = parseFloat(document.getElementById('variable2').value);
             const preall = parseFloat(document.getElementById('preall').value);
-            const paresdasda = parseInt(document.getElementById('paresdasda').value);
+            const paresdasda = parseInt(document.getElementById('paresdasda').value, 10);
 
-            // 定义模型名称
-            const models = [
-                `${group}_for_1_year`,
-                `${group}_for_2_years`,
-                `${group}_for_3_years`
-            ];
-
-            const results = {};
             try {
-                // 依次请求每个模型
-                for (let i = 0; i < models.length; i++) {
-                    const model_name = models[i];
-                    const requestBody = {
-                        model_name: model_name,
+                const response = await fetch('https://school-myopia-onset-final.glitch.me/predict', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        model_name: `${group}_for_1_year`,
                         inputs: {
                             genddeer: genddeer,
                             variable2: variable2,
                             preall: preall,
-                            paresdasda: paresdasda,
+                            paresdasda: paresdasda
                         }
-                    };
+                    })
+                });
 
-                    console.log("Sending Request for Model:", model_name);  // 打印当前请求的模型名称
-                    console.log("Request Body:", requestBody);  // 打印具体请求内容
-
-                    const response = await fetch('https://school-myopia-onset-final.glitch.me/predict', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify(requestBody)
-                    });
-
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! Status: ${response.status}`);
-                    }
-
-                    const result = await response.json();
-                    results[model_name] = result;
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
                 }
 
-                displayResults(results);
+                const result = await response.json();
+                let resultDisplay = "<h2>Results</h2>";
+                resultDisplay += `<p>Myopia-onset risk probability in 1 year: ${result.probability}</p>`;
+
+                document.getElementById('result').innerHTML = resultDisplay;
+
             } catch (error) {
                 console.error('Error:', error);
-                document.getElementById('result').innerHTML = `<p class="error">Error: ${error.message}</p>`;
+                document.getElementById('result').innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
             }
         });
-
-        function displayResults(results) {
-            let resultDisplay = "<h2>Results</h2>";
-            for (const [modelName, prediction] of Object.entries(results)) {
-                resultDisplay += `<p>Myopia-onset risk probability for ${modelName}: ${prediction.probability}</p>`;
-                resultDisplay += `<p>95% CI: [${prediction.confidence_interval ? prediction.confidence_interval[0] : 'N/A'}, ${prediction.confidence_interval ? prediction.confidence_interval[1] : 'N/A'}]</p>`;
-            }
-            document.getElementById('result').innerHTML = resultDisplay;
-        }
     </script>
 </body>
 </html>
