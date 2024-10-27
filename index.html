@@ -4,35 +4,109 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>School Myopia-Onset Risk Calculator</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f4f8;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        h1 {
+            color: #0056b3;
+            text-align: center;
+        }
+
+        form {
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+            max-width: 400px;
+            width: 100%;
+        }
+
+        label {
+            display: block;
+            margin-top: 15px;
+            font-weight: bold;
+        }
+
+        select, input[type="number"] {
+            width: 100%;
+            padding: 8px;
+            margin-top: 5px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        button[type="submit"] {
+            background-color: #0056b3;
+            color: white;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 20px;
+            width: 100%;
+        }
+
+        button[type="submit"]:hover {
+            background-color: #004494;
+        }
+
+        #result {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+            max-width: 400px;
+            width: 100%;
+        }
+
+        .error {
+            color: red;
+        }
+
+        .result-title {
+            color: #0056b3;
+        }
+    </style>
 </head>
 <body>
-    <h1>School Myopia-Onset Risk Calculator</h1>
+    <h1><i class="fas fa-eye"></i> School Myopia-Onset Risk Calculator</h1>
     <form id="predictionForm">
-        <label for="group">Choose model:</label><br>
+        <label for="group">Choose model:</label>
         <select id="group" onchange="updateVariable2Label()">
             <option value="cyc_data_model">Cyc Data Models</option>
             <option value="noncyc_data_model">Non-Cyc Data Models</option>
-        </select><br>
+        </select>
 
         <label for="genddeer">Gender:</label>
         <select id="genddeer">
             <option value="male">Male</option>
             <option value="female">Female</option>
-        </select><br>
+        </select>
 
         <label for="variable2" id="variable2Label">Baseline SER:</label>
-        <input type="number" id="variable2" step="0.01" required><br>  <!-- 允许输入小数 -->
+        <input type="number" id="variable2" step="0.01" required>
 
         <label for="preall">AL change in past 1 year:</label>
-        <input type="number" id="preall" step="0.01" required><br>  <!-- 允许输入小数 -->
+        <input type="number" id="preall" step="0.01" required>
 
         <label for="paresdasda">Number of myopic parents:</label>
         <select id="paresdasda">
             <option value="0">0</option>
             <option value="1">1</option>
             <option value="2">2</option>
-        </select><br>
+        </select>
 
         <button type="submit">Predict Risk</button>
     </form>
@@ -40,7 +114,6 @@
     <div id="result"></div>
 
     <script>
-        // 更新 variable2 的标签
         function updateVariable2Label() {
             const group = document.getElementById('group').value;
             const variable2Label = document.getElementById('variable2Label');
@@ -52,7 +125,6 @@
             }
         }
 
-        // 表单提交时处理预测请求
         document.getElementById('predictionForm').addEventListener('submit', async function (event) {
             event.preventDefault();
 
@@ -62,7 +134,6 @@
             const preall = parseFloat(document.getElementById('preall').value);
             const paresdasda = parseInt(document.getElementById('paresdasda').value);
 
-            // 向后端发送多个预测请求，获取 1 年、2 年和 3 年的结果
             try {
                 const results = {};
                 for (let year = 1; year <= 3; year++) {
@@ -73,7 +144,7 @@
                         },
                         body: JSON.stringify({
                             model_type: group,
-                            model_name: `in_${year}_year`,  // 动态构建年份信息
+                            model_name: `in_${year}_year`,
                             inputs: {
                                 genddeer: genddeer,
                                 variable2: variable2,
@@ -90,20 +161,17 @@
                     const result = await response.json();
                     results[`in_${year}_year`] = result;
                 }
-                
-                // 显示所有年份的预测结果
                 displayResults(results);
             } catch (error) {
                 console.error('Error:', error);
-                document.getElementById('result').innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+                document.getElementById('result').innerHTML = `<p class="error">Error: ${error.message}</p>`;
             }
         });
 
-        // 显示所有年份的预测结果
         function displayResults(results) {
-            let resultDisplay = "<h2>Results</h2>";
+            let resultDisplay = "<h2 class='result-title'>Results</h2>";
             for (const [modelName, prediction] of Object.entries(results)) {
-                const year = modelName.split('_').slice(-2).join(' '); // 获取年份信息
+                const year = modelName.split('_').slice(-2).join(' ');
                 resultDisplay += `<p>Myopia-onset risk probability in ${year}: ${prediction.probability}</p>`;
                 resultDisplay += `<p>95% Confidence Interval: [${prediction.confidence_interval[0]}, ${prediction.confidence_interval[1]}]</p>`;
             }
