@@ -47,7 +47,7 @@
         <h1>School Myopia-Onset Risk Calculator</h1>
         <form id="predictionForm">
             <div class="mb-3">
-                <label for="group">Choose Model:</label>
+                <label for="group">Choose Model Group:</label>
                 <select id="group" class="form-select" onchange="updateVariable2Label()">
                     <option value="cyc_data_model">Cyc Data Models</option>
                     <option value="noncyc_data_model">Non-Cyc Data Models</option>
@@ -148,54 +148,59 @@
                 document.getElementById('result').style.display = 'none';
                 document.getElementById('result').classList.remove('alert-success', 'alert-danger');
 
-                const selectedModel = group === 'cyc_data_model' ? 'cyc_data_model_for_1_year' : 'noncyc_data_model_for_1_year'; // You can dynamically select a model
+                // 根据模型选择动态调整
+                const models = group === 'cyc_data_model' ? 
+                    ['cyc_data_model_for_1_year', 'cyc_data_model_for_2_years', 'cyc_data_model_for_4_years'] :
+                    ['noncyc_data_model_for_1_year', 'noncyc_data_model_for_2_years', 'noncyc_data_model_for_4_years'];
 
-                const coefficients = modelCoefficients[selectedModel];
-                const encodedInputs = encodeInputs(genddeer, variable2, preall, paresdasda);
+                let resultDisplay = "<h3>Prediction Results:</h3>";
 
-                const X = [
-                    1,  // intercept
-                    encodedInputs.genddeer,
-                    encodedInputs.variable2,
-                    encodedInputs.preall,
-                    encodedInputs.paresdasda_A,
-                    encodedInputs.paresdasda_B
-                ];
+                // 遍历每个模型并计算结果
+                models.forEach(model => {
+                    const coefficients = modelCoefficients[model];
+                    const encodedInputs = encodeInputs(genddeer, variable2, preall, paresdasda);
 
-                const logits = coefficients.intercept + 
-                               coefficients.genddeer_coef * X[1] +
-                               coefficients.variable2_coef * X[2] +
-                               coefficients.preall_coef * X[3] +
-                               coefficients.paresdasda_A_coef * X[4] +
-                               coefficients.paresdasda_B_coef * X[5];
+                    const X = [
+                        1,  // intercept
+                        encodedInputs.genddeer,
+                        encodedInputs.variable2,
+                        encodedInputs.preall,
+                        encodedInputs.paresdasda_A,
+                        encodedInputs.paresdasda_B
+                    ];
 
-                // 计算概率
-                const probability = 1 / (1 + Math.exp(-logits));
+                    const logits = coefficients.intercept + 
+                                   coefficients.genddeer_coef * X[1] +
+                                   coefficients.variable2_coef * X[2] +
+                                   coefficients.preall_coef * X[3] +
+                                   coefficients.paresdasda_A_coef * X[4] +
+                                   coefficients.paresdasda_B_coef * X[5];
 
-                // 计算标准误差
-                const variance = (
-                    Math.pow(coefficients.intercept_se, 2) +
-                    Math.pow(coefficients.genddeer_se, 2) * X[1] +
-                    Math.pow(coefficients.variable2_se, 2) * X[2] +
-                    Math.pow(coefficients.preall_se, 2) * X[3] +
-                    Math.pow(coefficients.paresdasda_A_se, 2) * X[4] +
-                    Math.pow(coefficients.paresdasda_B_se, 2) * X[5]
-                );
-                const standard_error = Math.sqrt(variance);
+                    const probability = 1 / (1 + Math.exp(-logits));
 
-                // 95% 置信区间的 z 值
-                const z = 1.96;
-                const lower_bound_logit = logits - z * standard_error;
-                const upper_bound_logit = logits + z * standard_error;
+                    const variance = (
+                        Math.pow(coefficients.intercept_se, 2) +
+                        Math.pow(coefficients.genddeer_se, 2) * X[1] +
+                        Math.pow(coefficients.variable2_se, 2) * X[2] +
+                        Math.pow(coefficients.preall_se, 2) * X[3] +
+                        Math.pow(coefficients.paresdasda_A_se, 2) * X[4] +
+                        Math.pow(coefficients.paresdasda_B_se, 2) * X[5]
+                    );
+                    const standard_error = Math.sqrt(variance);
 
-                const lower_bound = 1 / (1 + Math.exp(-lower_bound_logit));
-                const upper_bound = 1 / (1 + Math.exp(-upper_bound_logit));
+                    const z = 1.96;
+                    const lower_bound_logit = logits - z * standard_error;
+                    const upper_bound_logit = logits + z * standard_error;
 
-                const resultDisplay = `
-                    <h3>Prediction Results:</h3>
-                    <p>Myopia-onset risk probability: <strong>${probability.toFixed(3)}</strong></p>
-                    <p>95% Confidence Interval: [${lower_bound.toFixed(3)}, ${upper_bound.toFixed(3)}]</p>
-                `;
+                    const lower_bound = 1 / (1 + Math.exp(-lower_bound_logit));
+                    const upper_bound = 1 / (1 + Math.exp(-upper_bound_logit));
+
+                    resultDisplay += `
+                        <p><strong>${model.replace(/_/g, ' ').replace('cyc data model', 'Cyc Data Model').replace('noncyc data model', 'Non-Cyc Data Model')}</strong></p>
+                        <p>Myopia-onset risk probability: <strong>${probability.toFixed(3)}</strong></p>
+                        <p>95% Confidence Interval: [${lower_bound.toFixed(3)}, ${upper_bound.toFixed(3)}]</p>
+                    `;
+                });
 
                 document.getElementById('result').innerHTML = resultDisplay;
                 document.getElementById('result').classList.add('alert-success');
@@ -210,14 +215,13 @@
         });
 
         function encodeInputs(genddeer, variable2, preall, paresdasda) {
-            const encodedInputs = {
+            return {
                 genddeer: genddeer === 'male' ? 0 : 1,
                 variable2: variable2,
                 preall: preall,
                 paresdasda_A: paresdasda === 1 ? 1 : 0,
                 paresdasda_B: paresdasda === 2 ? 1 : 0
             };
-            return encodedInputs;
         }
     </script>
 </body>
