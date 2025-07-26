@@ -88,6 +88,20 @@
     </div>
 
     <script>
+        // Model coefficients for both cyc_data_model and noncyc_data_model
+        const coefficients = {
+            cyc_data_model: {
+                '1': [-1.213, 0.4656, -4.5956, 6.1317, 0.8243, 1.0003],
+                '2': [0.1712, 0.6708, -3.7719, 6.0788, 0.5187, 0.9526],
+                '4': [1.378, 0.795, -3.1578, 5.1023, 0.3497, 0.8226]
+            },
+            noncyc_data_model: {
+                '1': [-18.1224, 0.209, 0.571, 10.5432, 0.6485, 0.8838],
+                '2': [-21.5972, 0.5959, 0.7786, 9.5555, 0.4811, 0.9511],
+                '4': [-19.058, 0.7768, 0.728, 7.835, 0.4115, 0.9747]
+            }
+        };
+
         function updateVariable2Label() {
             const group = document.getElementById('group').value;
             const variable2Label = document.getElementById('variable2Label');
@@ -99,7 +113,7 @@
             }
         }
 
-        document.getElementById('predictionForm').addEventListener('submit', async function (event) {
+        document.getElementById('predictionForm').addEventListener('submit', function(event) {
             event.preventDefault();
 
             const group = document.getElementById('group').value;
@@ -108,49 +122,44 @@
             const preall = parseFloat(document.getElementById('preall').value);
             const paresdasda = parseInt(document.getElementById('paresdasda').value, 10);
 
-            try {
-                document.getElementById('result').style.display = 'none';
-                document.getElementById('result').classList.remove('alert-success', 'alert-danger');
+            const model_coeffs = coefficients[group];
+            const model_keys = Object.keys(model_coeffs);
 
-                const response = await fetch('https://school-myopia-onset-xiugaiban.glitch.me/predict', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        model_group: group,
-                        inputs: {
-                            genddeer: genddeer,
-                            variable2: variable2,
-                            preall: preall,
-                            paresdasda: paresdasda
-                        }
-                    })
-                });
+            let resultDisplay = `<h3>Prediction Results:</h3>`;
 
-                if (!response.ok) {
-                    throw new Error(`HTTP error! Status: ${response.status}`);
-                }
+            // Loop through each model and calculate predictions
+            model_keys.forEach(year => {
+                const coeff = model_coeffs[year];
+                const intercept = coeff[0];
+                const genddeer_coef = coeff[1];
+                const variable2_coef = coeff[2];
+                const preall_coef = coeff[3];
+                const paresdasda_A_coef = coeff[4];
+                const paresdasda_B_coef = coeff[5];
 
-                const result = await response.json();
-                let resultDisplay = `<h3>Prediction Results:</h3>`;
-                for (const [year, data] of Object.entries(result)) {
-                    resultDisplay += `
-                        <p>Myopia-onset risk probability ${year.replace('_', ' ')}: <strong>${data.probability}</strong></p>
-                        <p>95% Confidence Interval: [${data.confidence_interval[0]}, ${data.confidence_interval[1]}]</p>
-                    `;
-                }
+                // Encoding inputs
+                const genddeer_val = (genddeer === 'male') ? 0 : 1;
+                const paresdasda_A = (paresdasda === 1) ? 1 : 0;
+                const paresdasda_B = (paresdasda === 2) ? 1 : 0;
 
-                document.getElementById('result').innerHTML = resultDisplay;
-                document.getElementById('result').classList.add('alert-success');
-                document.getElementById('result').style.display = 'block';
+                // Prepare the input vector
+                const X = [1, genddeer_val, variable2, preall, paresdasda_A, paresdasda_B];
 
-            } catch (error) {
-                console.error('Error:', error);
-                document.getElementById('result').innerHTML = `<p>Error: ${error.message}</p>`;
-                document.getElementById('result').classList.add('alert-danger');
-                document.getElementById('result').style.display = 'block';
-            }
+                // Calculate the logit (linear combination of coefficients and inputs)
+                const logits = intercept + genddeer_coef * X[1] + variable2_coef * X[2] + preall_coef * X[3] + paresdasda_A_coef * X[4] + paresdasda_B_coef * X[5];
+
+                // Convert logits to probability using sigmoid function
+                const probability = 1 / (1 + Math.exp(-logits));
+
+                // Show the results for each model year
+                resultDisplay += `
+                    <p>Myopia-onset risk probability ${year} years: <strong>${probability.toFixed(3)}</strong></p>
+                `;
+            });
+
+            document.getElementById('result').innerHTML = resultDisplay;
+            document.getElementById('result').classList.add('alert-success');
+            document.getElementById('result').style.display = 'block';
         });
     </script>
 </body>
