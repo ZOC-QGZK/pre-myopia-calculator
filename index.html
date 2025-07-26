@@ -88,17 +88,39 @@
     </div>
 
     <script>
-        // Model coefficients for both cyc_data_model and noncyc_data_model
-        const coefficients = {
-            cyc_data_model: {
-                '1': [-1.213, 0.4656, -4.5956, 6.1317, 0.8243, 1.0003],
-                '2': [0.1712, 0.6708, -3.7719, 6.0788, 0.5187, 0.9526],
-                '4': [1.378, 0.795, -3.1578, 5.1023, 0.3497, 0.8226]
+        // 模型系数：按照 models.db 表的列名顺序正确嵌入所有模型的系数
+        const modelCoefficients = {
+            // Cyc Data Models
+            cyc_data_model_for_1_year: {
+                intercept: -1.213, intercept_se: 0.3822, genddeer_coef: 0.4656, genddeer_se: 0.2171,
+                variable2_coef: -4.5956, variable2_se: 0.3382, preall_coef: 6.1317, preall_se: 0.9787,
+                paresdasda_A_coef: 0.8243, paresdasda_A_se: 0.2659, paresdasda_B_coef: 1.0003, paresdasda_B_se: 0.2713
             },
-            noncyc_data_model: {
-                '1': [-18.1224, 0.209, 0.571, 10.5432, 0.6485, 0.8838],
-                '2': [-21.5972, 0.5959, 0.7786, 9.5555, 0.4811, 0.9511],
-                '4': [-19.058, 0.7768, 0.728, 7.835, 0.4115, 0.9747]
+            cyc_data_model_for_2_years: {
+                intercept: 0.1712, intercept_se: 0.3194, genddeer_coef: 0.6708, genddeer_se: 0.1693,
+                variable2_coef: -3.7719, variable2_se: 0.2445, preall_coef: 6.0788, preall_se: 0.8554,
+                paresdasda_A_coef: 0.5187, paresdasda_A_se: 0.199, paresdasda_B_coef: 0.9526, paresdasda_B_se: 0.2117
+            },
+            cyc_data_model_for_4_years: {
+                intercept: 1.378, intercept_se: 0.2959, genddeer_coef: 0.795, genddeer_se: 0.1507,
+                variable2_coef: -3.1578, variable2_se: 0.2062, preall_coef: 5.1023, preall_se: 0.8174,
+                paresdasda_A_coef: 0.3497, paresdasda_A_se: 0.167, paresdasda_B_coef: 0.8226, paresdasda_B_se: 0.1941
+            },
+            // Non-Cyc Data Models
+            noncyc_data_model_for_1_year: {
+                intercept: -18.1224, intercept_se: 3.1348, genddeer_coef: 0.209, genddeer_se: 0.1865,
+                variable2_coef: 0.571, variable2_se: 0.1343, preall_coef: 10.5432, preall_se: 0.7983,
+                paresdasda_A_coef: 0.6485, paresdasda_A_se: 0.21, paresdasda_B_coef: 0.8838, paresdasda_B_se: 0.2165
+            },
+            noncyc_data_model_for_2_years: {
+                intercept: -21.5972, intercept_se: 2.6356, genddeer_coef: 0.5959, genddeer_se: 0.1524,
+                variable2_coef: 0.7786, variable2_se: 0.1127, preall_coef: 9.5555, preall_se: 0.718,
+                paresdasda_A_coef: 0.4811, paresdasda_A_se: 0.162, paresdasda_B_coef: 0.9511, paresdasda_B_se: 0.175
+            },
+            noncyc_data_model_for_4_years: {
+                intercept: -19.058, intercept_se: 2.3981, genddeer_coef: 0.7768, genddeer_se: 0.1405,
+                variable2_coef: 0.728, variable2_se: 0.1033, preall_coef: 7.835, preall_se: 0.6888,
+                paresdasda_A_coef: 0.4115, paresdasda_A_se: 0.1416, paresdasda_B_coef: 0.9747, paresdasda_B_se: 0.1675
             }
         };
 
@@ -113,7 +135,7 @@
             }
         }
 
-        document.getElementById('predictionForm').addEventListener('submit', function(event) {
+        document.getElementById('predictionForm').addEventListener('submit', function (event) {
             event.preventDefault();
 
             const group = document.getElementById('group').value;
@@ -122,45 +144,81 @@
             const preall = parseFloat(document.getElementById('preall').value);
             const paresdasda = parseInt(document.getElementById('paresdasda').value, 10);
 
-            const model_coeffs = coefficients[group];
-            const model_keys = Object.keys(model_coeffs);
+            try {
+                document.getElementById('result').style.display = 'none';
+                document.getElementById('result').classList.remove('alert-success', 'alert-danger');
 
-            let resultDisplay = `<h3>Prediction Results:</h3>`;
+                const selectedModel = group === 'cyc_data_model' ? 'cyc_data_model_for_1_year' : 'noncyc_data_model_for_1_year'; // You can dynamically select a model
 
-            // Loop through each model and calculate predictions
-            model_keys.forEach(year => {
-                const coeff = model_coeffs[year];
-                const intercept = coeff[0];
-                const genddeer_coef = coeff[1];
-                const variable2_coef = coeff[2];
-                const preall_coef = coeff[3];
-                const paresdasda_A_coef = coeff[4];
-                const paresdasda_B_coef = coeff[5];
+                const coefficients = modelCoefficients[selectedModel];
+                const encodedInputs = encodeInputs(genddeer, variable2, preall, paresdasda);
 
-                // Encoding inputs
-                const genddeer_val = (genddeer === 'male') ? 0 : 1;
-                const paresdasda_A = (paresdasda === 1) ? 1 : 0;
-                const paresdasda_B = (paresdasda === 2) ? 1 : 0;
+                const X = [
+                    1,  // intercept
+                    encodedInputs.genddeer,
+                    encodedInputs.variable2,
+                    encodedInputs.preall,
+                    encodedInputs.paresdasda_A,
+                    encodedInputs.paresdasda_B
+                ];
 
-                // Prepare the input vector
-                const X = [1, genddeer_val, variable2, preall, paresdasda_A, paresdasda_B];
+                const logits = coefficients.intercept + 
+                               coefficients.genddeer_coef * X[1] +
+                               coefficients.variable2_coef * X[2] +
+                               coefficients.preall_coef * X[3] +
+                               coefficients.paresdasda_A_coef * X[4] +
+                               coefficients.paresdasda_B_coef * X[5];
 
-                // Calculate the logit (linear combination of coefficients and inputs)
-                const logits = intercept + genddeer_coef * X[1] + variable2_coef * X[2] + preall_coef * X[3] + paresdasda_A_coef * X[4] + paresdasda_B_coef * X[5];
-
-                // Convert logits to probability using sigmoid function
+                // 计算概率
                 const probability = 1 / (1 + Math.exp(-logits));
 
-                // Show the results for each model year
-                resultDisplay += `
-                    <p>Myopia-onset risk probability ${year} years: <strong>${probability.toFixed(3)}</strong></p>
-                `;
-            });
+                // 计算标准误差
+                const variance = (
+                    Math.pow(coefficients.intercept_se, 2) +
+                    Math.pow(coefficients.genddeer_se, 2) * X[1] +
+                    Math.pow(coefficients.variable2_se, 2) * X[2] +
+                    Math.pow(coefficients.preall_se, 2) * X[3] +
+                    Math.pow(coefficients.paresdasda_A_se, 2) * X[4] +
+                    Math.pow(coefficients.paresdasda_B_se, 2) * X[5]
+                );
+                const standard_error = Math.sqrt(variance);
 
-            document.getElementById('result').innerHTML = resultDisplay;
-            document.getElementById('result').classList.add('alert-success');
-            document.getElementById('result').style.display = 'block';
+                // 95% 置信区间的 z 值
+                const z = 1.96;
+                const lower_bound_logit = logits - z * standard_error;
+                const upper_bound_logit = logits + z * standard_error;
+
+                const lower_bound = 1 / (1 + Math.exp(-lower_bound_logit));
+                const upper_bound = 1 / (1 + Math.exp(-upper_bound_logit));
+
+                const resultDisplay = `
+                    <h3>Prediction Results:</h3>
+                    <p>Myopia-onset risk probability: <strong>${probability.toFixed(3)}</strong></p>
+                    <p>95% Confidence Interval: [${lower_bound.toFixed(3)}, ${upper_bound.toFixed(3)}]</p>
+                `;
+
+                document.getElementById('result').innerHTML = resultDisplay;
+                document.getElementById('result').classList.add('alert-success');
+                document.getElementById('result').style.display = 'block';
+
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('result').innerHTML = `<p>Error: ${error.message}</p>`;
+                document.getElementById('result').classList.add('alert-danger');
+                document.getElementById('result').style.display = 'block';
+            }
         });
+
+        function encodeInputs(genddeer, variable2, preall, paresdasda) {
+            const encodedInputs = {
+                genddeer: genddeer === 'male' ? 0 : 1,
+                variable2: variable2,
+                preall: preall,
+                paresdasda_A: paresdasda === 1 ? 1 : 0,
+                paresdasda_B: paresdasda === 2 ? 1 : 0
+            };
+            return encodedInputs;
+        }
     </script>
 </body>
 </html>
